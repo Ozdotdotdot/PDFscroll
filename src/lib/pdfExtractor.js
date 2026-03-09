@@ -36,6 +36,7 @@ function countWords(blocks) {
   return blocks.reduce((n, b) => {
     if (b.text) return n + b.text.split(/\s+/).filter(Boolean).length
     if (b.names) return n + b.names.length
+    if (b.items) return n + b.items.join(' ').split(/\s+/).filter(Boolean).length
     return n
   }, 0)
 }
@@ -301,6 +302,12 @@ function buildNormalPageBlocks(paragraphs, images, formulaBlocks, pageHeight, pa
 
 /** Convert a paragraph object to a ContentBlock */
 function paragraphToBlock(para) {
+  if (para.type === 'list') {
+    const items = para.items.filter(Boolean)
+    if (!items.length) return null
+    return { type: 'list', listType: para.listType, items }
+  }
+
   const text = para.text.trim()
   if (!text) return null
 

@@ -11,6 +11,7 @@ import BodyText from './ContentBlocks/BodyText.jsx'
 import FormulaBlock from './ContentBlocks/FormulaBlock.jsx'
 import FigureBlock from './ContentBlocks/FigureBlock.jsx'
 import TableBlock from './ContentBlocks/TableBlock.jsx'
+import ListBlock from './ContentBlocks/ListBlock.jsx'
 
 function minuteRead(wordCount) {
   const mins = Math.max(1, Math.ceil(wordCount / 200))
@@ -265,6 +266,9 @@ function ContentBlock({ block, settings, onImageClick }) {
 
     case 'heading':
       return <SectionHeading level={block.level} text={block.text} />
+
+    case 'list':
+      return <ListBlock listType={block.listType} items={block.items} />
 
     case 'paragraph':
       return <BodyText text={block.text} />
