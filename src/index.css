@@ -1,0 +1,129 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Theme variables ── */
+:root {
+  --color-bg: #ffffff;
+  --color-text: #1a1a1a;
+  --color-text-secondary: #555555;
+  --color-border: #e5e7eb;
+  --color-accent: #2563eb;
+  --color-surface: #f9fafb;
+  --color-surface2: #f3f4f6;
+  --font-size-body: 17px;
+  --line-height-body: 1.65;
+  --content-width: 680px;
+}
+
+.theme-sepia {
+  --color-bg: #faf7f0;
+  --color-text: #2c1f0e;
+  --color-text-secondary: #6b5a3e;
+  --color-border: #e0d5b8;
+  --color-accent: #7c4f2b;
+  --color-surface: #f3ede0;
+  --color-surface2: #ebe4d0;
+}
+
+.theme-dark {
+  --color-bg: #181818;
+  --color-text: #e4e4e4;
+  --color-text-secondary: #9a9a9a;
+  --color-border: #2e2e2e;
+  --color-accent: #60a5fa;
+  --color-surface: #222222;
+  --color-surface2: #2a2a2a;
+}
+
+/* ── Font size utilities ── */
+.font-size-small  { --font-size-body: 15px; }
+.font-size-medium { --font-size-body: 17px; }
+.font-size-large  { --font-size-body: 19px; }
+.font-size-xl     { --font-size-body: 22px; }
+
+/* ── Content width utilities ── */
+.content-width-compact { --content-width: 560px; }
+.content-width-normal  { --content-width: 680px; }
+.content-width-wide    { --content-width: 800px; }
+
+/* ── Base ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: system-ui, -apple-system, sans-serif;
+  transition: background-color 0.25s ease, color 0.25s ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+
+/* ── Reading content area ── */
+.content-area {
+  font-family: Georgia, Charter, 'Bitstream Charter', 'Times New Roman', serif;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--color-text);
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
+
+/* ── Transitions ── */
+.toolbar-transition {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Upload drop zone animation ── */
+@keyframes border-dance {
+  0%, 100% { border-color: var(--color-accent); }
+  50%       { border-color: transparent; }
+}
+
+.drop-active {
+  animation: border-dance 0.8s step-end infinite;
+}
+
+/* ── Skeleton loading ── */
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position:  200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) 25%,
+    var(--color-surface2) 50%,
+    var(--color-surface) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: 4px;
+}
+
+/* ── Horizontal scroll containers ── */
+.h-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+/* ── Safe area insets for notch phones ── */
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.safe-top    { padding-top: env(safe-area-inset-top, 0px); }
