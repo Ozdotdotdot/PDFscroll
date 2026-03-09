@@ -133,14 +133,13 @@ function stripListMarker(text) {
 }
 
 /**
- * If a group of lines starts with non-list lines followed by list lines,
- * split it so the header lines become a separate paragraph group.
+ * Split a single text string on inline bullet markers that appear mid-string.
+ * e.g. "text • item1 • item2" → ["text", "• item1", "• item2"]
  */
-function splitAtFirstListMarker(lines) {
-  const texts = lines.map(lineToText)
-  const firstListIdx = texts.findIndex(t => getListItemType(t))
-  if (firstListIdx <= 0) return [lines] // starts with a list marker or has none — no split
-  return [lines.slice(0, firstListIdx), lines.slice(firstListIdx)]
+function splitInlineBullets(text) {
+  // Only split on bullet chars that appear after non-whitespace content
+  const parts = text.split(/\s+(?=[\u2022\u2023\u25CF\u25CB\u25AA\u25AB\u25B8]\s)/)
+  return parts.length > 1 ? parts.map(s => s.trim()).filter(Boolean) : [text]
 }
 
 /**
@@ -165,26 +164,19 @@ export function groupIntoParagraphs(lines, medianSize) {
   const typicalSpacing = median(lineSpacings) || medianSize * 1.5
   const paragraphBreakThreshold = typicalSpacing * 1.6
 
-  const flushGroup = (groupLines) => {
-    for (const group of splitAtFirstListMarker(groupLines)) {
-      const para = buildParagraph(group, medianSize)
-      if (para) rawParas.push(para)
-    }
-  }
-
   for (let i = 1; i < lines.length; i++) {
     const prevY = lines[i - 1][0].transform[5]
     const currY = lines[i][0].transform[5]
     const gap = prevY - currY
 
     if (gap > paragraphBreakThreshold) {
-      flushGroup(currentLines)
+      rawParas.push(...buildParagraphs(currentLines, medianSize))
       currentLines = []
     }
     currentLines.push(lines[i])
   }
   if (currentLines.length > 0) {
-    flushGroup(currentLines)
+    rawParas.push(...buildParagraphs(currentLines, medianSize))
   }
 
   // Merge adjacent list blocks of the same type
@@ -203,44 +195,64 @@ export function groupIntoParagraphs(lines, medianSize) {
   return paragraphs
 }
 
-function buildParagraph(lines, medianSize) {
-  const lineTexts = lines.map(lineToText).filter(Boolean)
-  if (!lineTexts.length) return null
+/**
+ * Convert a group of lines into one or more paragraph/list objects.
+ * Returns an array to handle the case where a header precedes a list.
+ */
+function buildParagraphs(lines, medianSize) {
+  const rawLineTexts = lines.map(lineToText).filter(Boolean)
+  if (!rawLineTexts.length) return []
 
   const sizes = lines.flatMap(l => l.map(it => getItemFontSize(it))).filter(s => s > 0)
   const avgSize = sizes.length ? sizes.reduce((a, b) => a + b, 0) / sizes.length : medianSize
   const x = Math.min(...lines.map(l => Math.min(...l.map(it => it.transform[4]))))
-  const y = lines[0][0].transform[5] // top y (highest PDF y = top of page)
+  const y = lines[0][0].transform[5]
 
-  // Only attempt list detection for body-sized text (not headings)
+  // For body-sized text, expand inline bullets then detect list structure
   if (avgSize <= medianSize * 1.12) {
-    const lineTypes = lineTexts.map(getListItemType)
-    const listLineCount = lineTypes.filter(Boolean).length
-    if (listLineCount > 0 && listLineCount / lineTexts.length >= 0.5) {
-      const bulletCount = lineTypes.filter(t => t === 'bullet').length
-      const orderedCount = lineTypes.filter(t => t === 'ordered').length
+    // Expand any lines containing mid-string bullet chars into virtual sub-lines
+    const lineTexts = rawLineTexts.flatMap(splitInlineBullets)
+    const firstListIdx = lineTexts.findIndex(t => getListItemType(t))
+
+    if (firstListIdx >= 0) {
+      const result = []
+
+      // Text before the first list marker → emit as a plain paragraph
+      if (firstListIdx > 0) {
+        const headerText = lineTexts.slice(0, firstListIdx).join(' ').trim()
+        if (headerText) {
+          const htype = avgSize < medianSize * 0.8 ? 'caption' : 'body'
+          result.push({ text: headerText, type: htype, avgFontSize: avgSize, x, y, lineCount: 1 })
+        }
+      }
+
+      // Build list items from the remaining lines
+      const listTexts = lineTexts.slice(firstListIdx)
+      const bulletCount = listTexts.filter(t => getListItemType(t) === 'bullet').length
+      const orderedCount = listTexts.filter(t => getListItemType(t) === 'ordered').length
       const listType = bulletCount >= orderedCount ? 'bullet' : 'ordered'
-      // Build items; continuation lines (no marker) are appended to the previous item
       const items = []
-      for (const t of lineTexts) {
+      for (const t of listTexts) {
         if (getListItemType(t)) {
           items.push(stripListMarker(t))
         } else if (items.length > 0) {
           items[items.length - 1] += ' ' + t
         }
-        // lines before the first marker are excluded — splitAtFirstListMarker handles them
       }
-      return { type: 'list', listType, items: items.filter(Boolean), x, y, lineCount: lines.length }
+      if (items.filter(Boolean).length > 0) {
+        result.push({ type: 'list', listType, items: items.filter(Boolean), x, y, lineCount: lines.length })
+      }
+      return result
     }
   }
 
-  const text = lineTexts.join(' ')
+  const text = rawLineTexts.join(' ')
   let type = 'body'
   if (avgSize > medianSize * 1.5) type = 'heading-large'
   else if (avgSize > medianSize * 1.12) type = 'heading-small'
   else if (avgSize < medianSize * 0.8) type = 'caption'
 
-  return { text, type, avgFontSize: avgSize, x, y, lineCount: lines.length }
+  return [{ text, type, avgFontSize: avgSize, x, y, lineCount: lines.length }]
 }
 
 /**
