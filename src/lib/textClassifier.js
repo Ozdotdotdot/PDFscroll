@@ -20,8 +20,8 @@ export function median(arr) {
 export function classifyItem(item, medianSize) {
   const size = getItemFontSize(item)
   if (size <= 0) return 'body'
-  if (size > medianSize * 1.8) return 'heading-large'
-  if (size > medianSize * 1.3) return 'heading-small'
+  if (size > medianSize * 1.5) return 'heading-large'
+  if (size > medianSize * 1.12) return 'heading-small'
   if (size < medianSize * 0.8) return 'caption'
   return 'body'
 }
@@ -52,7 +52,7 @@ export function detectTwoColumn(items, pageWidth) {
  * Determine whether a text item is a page header/footer.
  * Strips items within `margin` PDF units of the top/bottom of the page.
  */
-export function isHeaderFooter(item, pageHeight, margin = 45) {
+export function isHeaderFooter(item, pageHeight, margin = 28) {
   const y = item.transform[5]
   return y < margin || y > pageHeight - margin
 }
@@ -163,8 +163,8 @@ function buildParagraph(lines, medianSize) {
   const y = lines[0][0].transform[5] // top y (highest PDF y = top of page)
 
   let type = 'body'
-  if (avgSize > medianSize * 1.8) type = 'heading-large'
-  else if (avgSize > medianSize * 1.3) type = 'heading-small'
+  if (avgSize > medianSize * 1.5) type = 'heading-large'
+  else if (avgSize > medianSize * 1.12) type = 'heading-small'
   else if (avgSize < medianSize * 0.8) type = 'caption'
 
   return { text, type, avgFontSize: avgSize, x, y, lineCount: lines.length }

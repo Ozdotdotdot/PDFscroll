@@ -192,15 +192,31 @@ function detectColumnSplitY(leftParas, rightParas, pageHeight) {
 }
 
 /**
- * Build content blocks for the first page (special handling for academic papers).
+ * Return true only if this looks like an academic paper first page:
+ * must have a heading-large paragraph AND an "Abstract" keyword.
+ * Resumes, reports, and articles will not match.
+ */
+function looksLikeAcademicPaper(paragraphs) {
+  const hasLargeTitle = paragraphs.some(p => p.type === 'heading-large')
+  if (!hasLargeTitle) return false
+  return paragraphs.some(p => isAbstractHeading(p.text))
+}
+
+/**
+ * Build content blocks for the first page.
+ * For academic papers: extract title / authors / abstract with special styling.
+ * For everything else (resumes, reports, articles): fall through to normal processing.
  */
 function buildFirstPageBlocks(paragraphs, images, formulaBlocks, pageHeight, pageWidth) {
+  if (!looksLikeAcademicPaper(paragraphs)) {
+    return buildNormalPageBlocks(paragraphs, images, formulaBlocks, pageHeight, pageWidth)
+  }
+
   const blocks = []
-  let state = 'pre-title' // 'pre-title' | 'title' | 'authors' | 'body' | 'abstract' | 'post-abstract'
+  let state = 'pre-title' // 'pre-title' | 'title' | 'authors' | 'abstract' | 'body'
   let titleText = ''
   let authorNames = []
   let abstractLines = []
-  let collectingAbstract = false
 
   for (const para of paragraphs) {
     const text = para.text.trim()
@@ -212,7 +228,6 @@ function buildFirstPageBlocks(paragraphs, images, formulaBlocks, pageHeight, pag
         state = 'title'
         continue
       } else if (state === 'title') {
-        // Emit accumulated title
         if (titleText) {
           blocks.push({ type: 'title', text: titleText })
           titleText = ''
@@ -227,21 +242,18 @@ function buildFirstPageBlocks(paragraphs, images, formulaBlocks, pageHeight, pag
           blocks.push({ type: 'authors', names: authorNames })
           authorNames = []
         }
-        blocks.push({ type: 'abstract-label', text: 'Abstract' })
         state = 'abstract'
-        collectingAbstract = true
         continue
       }
-      // Lines that look like author names (compact, not too long, possibly
-      // separated by commas or "and")
-      if (text.length < 200 && para.type !== 'body' || looksLikeAffiliation(text)) {
-        if (looksLikeAffiliation(text)) {
-          // Skip institutional affiliations in author list (keep as body later)
-          continue
+      // Fix: explicit parentheses to avoid operator-precedence bug.
+      // Treat as author/affiliation if text is compact AND non-body typed,
+      // OR if it looks like an institutional affiliation line.
+      if ((text.length < 200 && para.type !== 'body') || looksLikeAffiliation(text)) {
+        if (!looksLikeAffiliation(text)) {
+          const names = text.split(/,|\band\b/i).map(n => n.trim()).filter(Boolean)
+          authorNames.push(...names)
         }
-        // Could be author names - collect them
-        const names = text.split(/,|\band\b/i).map(n => n.trim()).filter(Boolean)
-        authorNames.push(...names)
+        // Affiliations are silently skipped
         continue
       }
       // Transitioned out of authors
@@ -253,19 +265,16 @@ function buildFirstPageBlocks(paragraphs, images, formulaBlocks, pageHeight, pag
     }
 
     if (state === 'abstract') {
-      if (text.length > 20) {
-        abstractLines.push(text)
-      }
-      // Check if we've moved to body (abstract usually ends when section headings begin)
       if (para.type === 'heading-small' || para.type === 'heading-large') {
         if (abstractLines.length > 0) {
           blocks.push({ type: 'abstract', text: abstractLines.join(' ') })
           abstractLines = []
         }
-        collectingAbstract = false
         state = 'body'
         blocks.push(paragraphToBlock(para))
+        continue
       }
+      if (text.length > 20) abstractLines.push(text)
       continue
     }
 
@@ -274,12 +283,11 @@ function buildFirstPageBlocks(paragraphs, images, formulaBlocks, pageHeight, pag
     }
   }
 
-  // Flush any remaining
-  if (titleText) blocks.push({ type: 'title', text: titleText })
-  if (authorNames.length > 0) blocks.push({ type: 'authors', names: authorNames })
+  // Flush remaining
+  if (titleText)                blocks.push({ type: 'title',   text: titleText })
+  if (authorNames.length > 0)   blocks.push({ type: 'authors', names: authorNames })
   if (abstractLines.length > 0) blocks.push({ type: 'abstract', text: abstractLines.join(' ') })
 
-  // Merge in images and formulas
   return mergeWithMediaBlocks(blocks, images, formulaBlocks)
 }
 
