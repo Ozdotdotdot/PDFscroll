@@ -30,6 +30,7 @@ export function useDocumentCache() {
       const record = {
         id:            result.fileHash,
         title:         result.title,
+        fileName:      result.fileName,
         pageCount:     result.pageCount,
         wordCount:     result.wordCount,
         content:       result.content,

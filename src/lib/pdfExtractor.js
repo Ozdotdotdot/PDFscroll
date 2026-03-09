@@ -41,13 +41,33 @@ function countWords(blocks) {
   }, 0)
 }
 
-/** Guess document title from blocks */
-function guessTitle(blocks) {
+/** Guess document title from blocks, with filename as fallback */
+function guessTitle(blocks, fileName) {
+  // 1. Explicit title block (academic papers)
   const titleBlock = blocks.find(b => b.type === 'title')
   if (titleBlock) return titleBlock.text
+
+  // 2. First level-1 heading
   const heading = blocks.find(b => b.type === 'heading' && b.level === 1)
   if (heading) return heading.text
+
+  // 3. First short paragraph — likely a title line in reports/resumes
+  const firstPara = blocks.find(b => b.type === 'paragraph' && b.text?.trim().length > 0)
+  if (firstPara && firstPara.text.trim().length <= 120) return firstPara.text.trim()
+
+  // 4. Original filename cleaned up
+  if (fileName) return fileNameToTitle(fileName)
+
   return 'Untitled Document'
+}
+
+/** Convert a raw filename into a readable title */
+function fileNameToTitle(fileName) {
+  // Strip all extensions (handles .docx.pdf, .pdf, etc.)
+  let name = fileName.replace(/(\.\w+)+$/, '')
+  // Replace underscores/hyphens with spaces
+  name = name.replace(/[_\-]+/g, ' ').trim()
+  return name.charAt(0).toUpperCase() + name.slice(1)
 }
 
 /**
@@ -98,9 +118,9 @@ export async function extractPDF(file, onProgress) {
   }
 
   const wordCount = countWords(allBlocks)
-  const title = guessTitle(allBlocks)
+  const title = guessTitle(allBlocks, file.name)
 
-  return { fileHash, title, pageCount: numPages, wordCount, content: allBlocks }
+  return { fileHash, title, fileName: file.name, pageCount: numPages, wordCount, content: allBlocks }
 }
 
 /**
