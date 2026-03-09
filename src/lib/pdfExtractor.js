@@ -200,7 +200,7 @@ function detectColumnSplitY(leftParas, rightParas, pageHeight) {
 function looksLikeAcademicPaper(paragraphs) {
   const hasLargeTitle = paragraphs.some(p => p.type === 'heading-large')
   if (!hasLargeTitle) return false
-  return paragraphs.some(p => isAbstractHeading(p.text))
+  return paragraphs.some(p => p.text && isAbstractHeading(p.text))
 }
 
 /**
@@ -220,6 +220,12 @@ function buildFirstPageBlocks(paragraphs, images, formulaBlocks, pageHeight, pag
   let abstractLines = []
 
   for (const para of paragraphs) {
+    // List blocks have no .text — route them straight through
+    if (para.type === 'list') {
+      if (state === 'body') blocks.push(paragraphToBlock(para))
+      continue
+    }
+
     const text = para.text.trim()
     if (!text) continue
 

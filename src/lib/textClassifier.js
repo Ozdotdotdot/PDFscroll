@@ -232,15 +232,26 @@ function buildParagraphs(lines, medianSize) {
       const orderedCount = listTexts.filter(t => getListItemType(t) === 'ordered').length
       const listType = bulletCount >= orderedCount ? 'bullet' : 'ordered'
       const items = []
+      const trailingTexts = [] // lines that look like section headers after the list
       for (const t of listTexts) {
         if (getListItemType(t)) {
           items.push(stripListMarker(t))
         } else if (items.length > 0) {
-          items[items.length - 1] += ' ' + t
+          const prev = items[items.length - 1]
+          // If the previous item ended with sentence punctuation and this is a short
+          // capitalized phrase, it's a new section header — don't append it
+          if (/[.!?]$/.test(prev.trim()) && t.length < 40 && /^[A-Z]/.test(t) && !/[.!?]$/.test(t)) {
+            trailingTexts.push(t)
+          } else {
+            items[items.length - 1] += ' ' + t
+          }
         }
       }
       if (items.filter(Boolean).length > 0) {
         result.push({ type: 'list', listType, items: items.filter(Boolean), x, y, lineCount: lines.length })
+      }
+      for (const t of trailingTexts) {
+        result.push({ text: t, type: 'body', avgFontSize: avgSize, x, y, lineCount: 1 })
       }
       return result
     }
