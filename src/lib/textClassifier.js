@@ -277,11 +277,12 @@ export function splitColumns(items, pageWidth) {
 }
 
 /**
- * Heuristic: is this text in the "abstract" section?
- * Looks for the word "Abstract" appearing as a heading.
+ * Heuristic: is this text an "abstract" section label.
+ * Matches "Abstract", "Abstract:", "Abstract—", "Abstract.", "ABSTRACT", etc.
+ * Does NOT match "Abstract. This paper..." (inline abstract with body text).
  */
 export function isAbstractHeading(text) {
-  return /^abstract\s*$/i.test(text.trim())
+  return /^abstract[:\.\-\u2013\u2014]?\s*$/i.test(text.trim())
 }
 
 /**

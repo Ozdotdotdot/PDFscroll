@@ -33,6 +33,11 @@ function mathDensity(str) {
   return count / str.length
 }
 
+// Regex to detect LaTeX/TeX math font names in PDF font descriptors.
+// CMMI = Computer Modern Math Italic, CMSY = Math Symbols, MSAM/MSBM = AMS fonts,
+// CMEX = Math Extension, EUFM = Euler Fraktur, RSFS/RSFSO = Script fonts.
+const MATH_FONT_RE = /cmmi|cmsy|cmex|msam|msbm|eufm|eurm|rsfs|mathit|mathbf|mathsf|symbol/i
+
 /**
  * Decide whether a text item is likely part of a mathematical formula.
  */
@@ -49,6 +54,9 @@ export function isMathItem(item, medianFontSize) {
   // Subscripts / superscripts (much smaller than body text)
   const size = item.height || Math.abs(item.transform[3]) || Math.abs(item.transform[0])
   if (size < medianFontSize * 0.65 && /^[a-zA-Z0-9,.]$/.test(str)) return true
+
+  // LaTeX math fonts identified by PDF font name
+  if (item.fontName && MATH_FONT_RE.test(item.fontName)) return true
 
   return false
 }

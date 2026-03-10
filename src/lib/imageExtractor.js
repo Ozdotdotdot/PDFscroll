@@ -158,20 +158,30 @@ export async function cropRegionFromPage(page, pdfBox, scale = 2) {
   const maxX = Math.ceil(Math.max(cx1, cx2)) + 8
   const maxY = Math.ceil(Math.max(cy1, cy2)) + 8
 
-  const w = Math.max(maxX - minX, 1)
-  const h = Math.max(maxY - minY, 1)
+  if (maxX - minX < 8 || maxY - minY < 4) return null
 
-  if (w < 8 || h < 4) return null
+  const canvasW = Math.floor(viewport.width)
+  const canvasH = Math.floor(viewport.height)
 
   const canvas = document.createElement('canvas')
-  canvas.width  = Math.floor(viewport.width)
-  canvas.height = Math.floor(viewport.height)
+  canvas.width  = canvasW
+  canvas.height = canvasH
   await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise
 
+  // Clamp crop region to canvas bounds to avoid blank/out-of-bounds reads
+  const clampedMinX = Math.max(0, minX)
+  const clampedMinY = Math.max(0, minY)
+  const clampedMaxX = Math.min(canvasW, maxX)
+  const clampedMaxY = Math.min(canvasH, maxY)
+  const cw = Math.max(clampedMaxX - clampedMinX, 1)
+  const ch = Math.max(clampedMaxY - clampedMinY, 1)
+
+  if (cw < 8 || ch < 4) return null
+
   const crop = document.createElement('canvas')
-  crop.width  = w
-  crop.height = h
-  crop.getContext('2d').drawImage(canvas, minX, minY, w, h, 0, 0, w, h)
+  crop.width  = cw
+  crop.height = ch
+  crop.getContext('2d').drawImage(canvas, clampedMinX, clampedMinY, cw, ch, 0, 0, cw, ch)
 
   return crop.toDataURL('image/png')
 }
